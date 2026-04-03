@@ -1,6 +1,10 @@
 package com.skill_swap_network.user.model;
 
+import com.skill_swap_network.user.enums.ROLE;
+import com.skill_swap_network.user.enums.STATUS;
+
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,8 +27,9 @@ public class User {
     private String name;
     private String email;
     private String password;
+    private ROLE role;
     private String bio;
     private String profileImage;
-    private boolean acive;
+    private STATUS active;
 
 }
