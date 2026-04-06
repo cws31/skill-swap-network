@@ -64,4 +64,26 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> resourceNotFoundExceptionHandler(Exception exp) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", exp.getMessage());
+        response.put("error", "resource Not Found");
+        response.put("status", HttpStatus.NOT_FOUND);
+        response.put("timestamp", LocalDate.now());
+
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> unauthorizedExceptionHandler(Exception exp) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", exp.getMessage());
+        response.put("error", "unauthorize access");
+        response.put("status", HttpStatus.UNAUTHORIZED);
+        response.put("timestamp", LocalDate.now());
+
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
 }
