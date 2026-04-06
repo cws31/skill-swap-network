@@ -1,17 +1,19 @@
 package com.skill_swap_network.auth.filter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.util.List;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.skill_swap_network.auth.service.Jwtservice;
+import com.skill_swap_network.user.model.User;
 import com.skill_swap_network.user.repository.UserRepository;
 
 import jakarta.servlet.FilterChain;
@@ -41,20 +43,31 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-            email = jwtservice.extractEmail(jwt);
+
+            try {
+                email = jwtservice.extractEmail(jwt);
+            } catch (Exception e) {
+
+                filterChain.doFilter(request, response);
+                return;
+            }
         }
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // ✅ Step 2: Validate & Authenticate
+        if (jwt != null && email != null
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            var user = userRepository.findByEmail(email);
+            Optional<User> userOptional = userRepository.findByEmail(email);
 
-            if (user != null && jwtservice.isTokenValid(jwt, email)) {
+            if (userOptional.isPresent() && jwtservice.isTokenValid(jwt, email)) {
 
-                List<SimpleGrantedAuthority> authorities = List
-                        .of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                User user = userOptional.get();
+
+                List<SimpleGrantedAuthority> authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        email,
+                        user, // ✅ principal
                         null,
                         authorities);
 
@@ -65,6 +78,7 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
+        // ✅ Step 3: Continue filter chain
         filterChain.doFilter(request, response);
     }
 }
