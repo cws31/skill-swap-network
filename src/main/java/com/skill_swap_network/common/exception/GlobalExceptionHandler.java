@@ -54,4 +54,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(SkillAlreadyExistException.class)
+    public ResponseEntity<Map<String, Object>> skillAlreadyExistExceptionHandler(Exception exp) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", exp.getMessage());
+        response.put("error", "skill already exist, you can update in this");
+        response.put("status", HttpStatus.CONFLICT);
+        response.put("timeStamp", LocalDate.now());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
 }
