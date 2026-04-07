@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import com.skill_swap_network.skill.dtos.MatchResponse;
 import com.skill_swap_network.skill.dtos.SkillAddRequest;
 import com.skill_swap_network.skill.dtos.SkillAddResponse;
 import com.skill_swap_network.skill.service.SkillService;
@@ -79,5 +80,27 @@ public class SkillController {
         String response = skillService.deleteSkill(id, user);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/matches")
+    public ResponseEntity<List<SkillAddResponse>> getMatches(
+            Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+
+        List<SkillAddResponse> matches = skillService.findMatches(user);
+
+        return ResponseEntity.ok(matches);
+    }
+
+    @GetMapping("/matches/ranked")
+    public ResponseEntity<List<MatchResponse>> getRankedMatches(
+            Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+
+        List<MatchResponse> matches = skillService.findRankedMatches(user);
+
+        return ResponseEntity.ok(matches);
     }
 }

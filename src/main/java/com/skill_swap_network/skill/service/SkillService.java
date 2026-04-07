@@ -1,15 +1,17 @@
 package com.skill_swap_network.skill.service;
 
-import java.util.List;
 import java.util.stream.Collectors;
-
+import java.util.*;
 import org.springframework.stereotype.Service;
 
 import com.skill_swap_network.common.exception.ResourceNotFoundException;
 import com.skill_swap_network.common.exception.SkillAlreadyExistException;
 import com.skill_swap_network.common.exception.UnauthorizedException;
+import com.skill_swap_network.skill.dtos.MatchResponse;
+import com.skill_swap_network.skill.dtos.MatchSkillDTO;
 import com.skill_swap_network.skill.dtos.SkillAddRequest;
 import com.skill_swap_network.skill.dtos.SkillAddResponse;
+import com.skill_swap_network.skill.enums.SKILLTYPE;
 import com.skill_swap_network.skill.model.Skill;
 import com.skill_swap_network.skill.repository.SkillRepository;
 import com.skill_swap_network.user.model.User;
@@ -125,5 +127,108 @@ public class SkillService {
         response.setMessage("Success");
 
         return response;
+    }
+
+    public List<SkillAddResponse> findMatches(User user) {
+
+        List<Skill> mySkills = skillRepository.findByUser(user);
+
+        List<String> teachSkills = mySkills.stream()
+                .filter(s -> s.getSkillType().name().equals("TEACH"))
+                .map(Skill::getSkillName)
+                .toList();
+
+        List<String> learnSkills = mySkills.stream()
+                .filter(s -> s.getSkillType().name().equals("LEARN"))
+                .map(Skill::getSkillName)
+                .toList();
+
+        List<Skill> matchedSkills = new ArrayList<>();
+
+        if (!learnSkills.isEmpty()) {
+            matchedSkills.addAll(
+                    skillRepository.findMatchingSkills(
+                            learnSkills,
+                            SKILLTYPE.TEACH,
+                            user));
+        }
+
+        if (!teachSkills.isEmpty()) {
+            matchedSkills.addAll(
+                    skillRepository.findMatchingSkills(
+                            teachSkills,
+                            SKILLTYPE.LEARN,
+                            user));
+        }
+
+        return matchedSkills.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<MatchResponse> findRankedMatches(User user) {
+
+        List<Skill> mySkills = skillRepository.findByUser(user);
+
+        List<String> teachSkills = mySkills.stream()
+                .filter(s -> s.getSkillType() == SKILLTYPE.TEACH)
+                .map(Skill::getSkillName)
+                .toList();
+
+        List<String> learnSkills = mySkills.stream()
+                .filter(s -> s.getSkillType() == SKILLTYPE.LEARN)
+                .map(Skill::getSkillName)
+                .toList();
+
+        List<Skill> allSkills = skillRepository.findAll();
+
+        Map<User, Integer> scoreMap = new HashMap<>();
+        Map<User, List<MatchSkillDTO>> matchDetailsMap = new HashMap<>();
+
+        for (Skill skill : allSkills) {
+
+            User otherUser = skill.getUser();
+
+            if (otherUser.getId().equals(user.getId()))
+                continue;
+
+            int score = scoreMap.getOrDefault(otherUser, 0);
+            List<MatchSkillDTO> matchedSkills = matchDetailsMap.getOrDefault(otherUser, new ArrayList<>());
+
+            if (learnSkills.contains(skill.getSkillName())
+                    && skill.getSkillType() == SKILLTYPE.TEACH) {
+
+                score += 2;
+
+                matchedSkills.add(new MatchSkillDTO(
+                        skill.getSkillName(),
+                        skill.getCategory().name(),
+                        "THEY_TEACH_YOU"));
+            }
+
+            if (teachSkills.contains(skill.getSkillName())
+                    && skill.getSkillType() == SKILLTYPE.LEARN) {
+
+                score += 1;
+
+                matchedSkills.add(new MatchSkillDTO(
+                        skill.getSkillName(),
+                        skill.getCategory().name(),
+                        "YOU_TEACH_THEM"));
+            }
+
+            scoreMap.put(otherUser, score);
+            matchDetailsMap.put(otherUser, matchedSkills);
+        }
+
+        return scoreMap.entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .map(entry -> new MatchResponse(
+                        entry.getKey().getId(),
+                        entry.getKey().getName(),
+                        entry.getValue(),
+                        matchDetailsMap.get(entry.getKey())))
+                .sorted((a, b) -> Integer.compare(b.getScore(), a.getScore()))
+                .toList();
     }
 }
